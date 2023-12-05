@@ -28,10 +28,14 @@ var userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  role: {
+    type: String,
+    default: 'user',
+  },
 });
 
 userSchema.pre('save', async function(next) {
-  const salt =  await bycrypt.genSaltSync(10);
+  const salt = await bycrypt.genSaltSync(10);
   this.password = await bycrypt.hash(this.password, salt);
 });
 userSchema.methods.isPasswordMatched = async function(enteredPassword) {
