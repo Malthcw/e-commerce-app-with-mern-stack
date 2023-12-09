@@ -16,7 +16,6 @@ const createUser = asyncHandler(async (req, res) => {
 
 const loginUserCtrl = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  console.log(email, password);
 
   const findUser = await User.findOne({ email: email });
   if (findUser && (await findUser.isPasswordMatched(password))) {
@@ -34,10 +33,11 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
 });
 
 const updateOneUser = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+  console.log(req.user);
+  const { _id } = req.user;
   try {
     const updateAuser = await User.findByIdAndUpdate(
-      id,
+      _id,
       {
         firstname: req?.body?.firstname,
         lastname: req?.body?.lastname,
@@ -81,6 +81,54 @@ const deleteOneUser = asyncHandler(async (req, res) => {
   }
 });
 
+const blockUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const blockedUser = await User.findByIdAndUpdate(
+      id,
+      {
+        isBlocked: true,
+      },
+      {
+        new: true,
+      }
+    );
+
+    res.json({
+      message: 'User Blocked',
+      user: blockedUser,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+const unblockUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const unblockedUser = await User.findByIdAndUpdate(
+      id,
+      {
+        isBlocked: false,
+      },
+      {
+        new: true,
+      }
+    );
+
+    res.json({
+      message: 'User Unblocked',
+      user: unblockedUser,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 module.exports = {
   createUser,
   loginUserCtrl,
@@ -88,4 +136,6 @@ module.exports = {
   getOneUser,
   deleteOneUser,
   updateOneUser,
+  blockUser,
+  unblockUser,
 };
