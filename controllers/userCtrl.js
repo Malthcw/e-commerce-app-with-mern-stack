@@ -4,6 +4,8 @@ const asyncHandler = require('express-async-handler');
 const validateMongodbID = require('../utils/validateMongodbID');
 const { generateRefreshToken } = require('../config/refreshToken');
 const jwt = require('jsonwebtoken');
+const express = require('express');
+const sendEmail = require('./emailController');
 
 const createUser = asyncHandler(async (req, res) => {
   const email = req.body.email;
@@ -190,6 +192,43 @@ const unblockUser = asyncHandler(async (req, res) => {
   }
 });
 
+const updatePassword = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const password = req.body.password;
+  validateMongodbID(_id);
+  const user = await User.findById(_id);
+  if (password) {
+    user.password = password;
+    const updatedPassword = await user.save();
+    res.json(updatedPassword);
+  } else {
+    res.json(user);
+  }
+});
+
+const frogotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) throw new Error('user not found');
+  try {
+    const token = await user.createPasswordResetToken();
+    await user.save();
+    const resetUrl = `Hi.. Please follow this link to reset your password <a href="http://localhost:3000/resetpassword/${token}">reset password</a>`;
+    const data = {
+      to: email,
+      text: 'Hey User',
+      subject: 'Reset Password',
+      html: resetUrl,
+    };
+    console.log(data);
+   sendEmail(data);
+    res.json(token);
+  } catch (error) {
+    throw new Error(error.message);
+  }
+});
+
 module.exports = {
   createUser,
   loginUserCtrl,
@@ -201,4 +240,6 @@ module.exports = {
   unblockUser,
   handleRefreshToken,
   logoutUser,
+  updatePassword,
+  frogotPassword,
 };

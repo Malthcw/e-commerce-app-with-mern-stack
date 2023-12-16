@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/Malthcw/e-commerce-app-with-mern-stack#readme",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.0",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
     "cookie-parser": "^1.4.6",
