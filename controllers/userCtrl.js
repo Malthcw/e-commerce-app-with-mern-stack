@@ -4,8 +4,8 @@ const asyncHandler = require('express-async-handler');
 const validateMongodbID = require('../utils/validateMongodbID');
 const { generateRefreshToken } = require('../config/refreshToken');
 const jwt = require('jsonwebtoken');
-const express = require('express');
 const sendEmail = require('./emailController');
+const crypto = require('crypto');
 
 const createUser = asyncHandler(async (req, res) => {
   const email = req.body.email;
@@ -222,11 +222,30 @@ const frogotPassword = asyncHandler(async (req, res) => {
       html: resetUrl,
     };
     console.log(data);
-   sendEmail(data);
+    sendEmail(data);
     res.json(token);
   } catch (error) {
     throw new Error(error.message);
   }
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const { token } = req.params;
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+  if (!user) throw new Error('Token is invalid or expired');
+  user.password = password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+  res.json(user);
 });
 
 module.exports = {
@@ -242,4 +261,5 @@ module.exports = {
   logoutUser,
   updatePassword,
   frogotPassword,
+  resetPassword,
 };
