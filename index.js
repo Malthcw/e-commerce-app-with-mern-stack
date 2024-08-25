@@ -8,6 +8,7 @@ const blogRouter = require('./routes/blogRouter');
 const categoryRouter = require('./routes/ProductCategoryRouter');
 const blogcategoryRouter = require('./routes/blogCategoryRouter');
 const brandRouter = require('./routes/brandRouter');
+const couponRouter = require('./routes/couponRouter');
 const bodyParser = require('body-parser');
 const { notFound, errorHandler } = require('./middleware/errorHander');
 const cookieParser = require('cookie-parser');
@@ -26,6 +27,7 @@ app.use('/api/blog', blogRouter);
 app.use('/api/category', categoryRouter);
 app.use('/api/blogcategory', blogcategoryRouter);
 app.use('/api/brand', brandRouter);
+app.use('/api/coupon', couponRouter);
 app.use(notFound);
 app.use(errorHandler);
 
