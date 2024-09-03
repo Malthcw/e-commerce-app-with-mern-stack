@@ -1,4 +1,6 @@
 const { generateToken } = require('../config/jwtToken');
+const Cart = require('../models/cartModel');
+const product = require('../models/productModel');
 const User = require('../models/userModel');
 const asyncHandler = require('express-async-handler');
 const validateMongodbID = require('../utils/validateMongodbID');
@@ -19,6 +21,7 @@ const createUser = asyncHandler(async (req, res) => {
   }
 });
 
+//login user
 const loginUserCtrl = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -45,6 +48,40 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
       email: findUser?.email,
       mobile: findUser?.mobile,
       token: generateToken(findUser?._id),
+    });
+  } else {
+    throw new Error('Invalid email or password');
+  }
+});
+
+//admin login
+const loginAdmin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const findAdmin = await User.findOne({ email: email });
+  if (findAdmin.role != 'admin') throw new Error('You are not an admin');
+  if (findAdmin && (await findAdmin.isPasswordMatched(password))) {
+    const refreshToken = generateRefreshToken(findAdmin._id);
+    const updateuser = await User.findByIdAndUpdate(
+      findAdmin._id,
+      {
+        refreshToken: refreshToken,
+      },
+      {
+        new: true,
+      }
+    );
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      maxAge: 72 * 60 * 60 * 1000,
+    });
+    res.json({
+      _id: findAdmin?._id,
+      firstname: findAdmin?.firstname,
+      lastname: findAdmin?.lastname,
+      email: findAdmin?.email,
+      mobile: findAdmin?.mobile,
+      token: generateToken(findAdmin?._id),
     });
   } else {
     throw new Error('Invalid email or password');
@@ -104,6 +141,23 @@ const updateOneUser = asyncHandler(async (req, res) => {
         lastname: req?.body?.lastname,
         email: req?.body?.email,
         mobile: req?.body?.mobile,
+      },
+      { new: true }
+    );
+    res.json(updateAuser);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const saveAddress = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  validateMongodbID(_id);
+  try {
+    const updateAuser = await User.findByIdAndUpdate(
+      _id,
+      {
+        address: req?.body?.address,
       },
       { new: true }
     );
@@ -248,6 +302,56 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.json(user);
 });
 
+const getWishList = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  try {
+    const findUser = await User.findById(_id).populate('wishlist');
+    res.json(findUser);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const userCart = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  console.log(_id);
+  const { cart } = req.body;
+  validateMongodbID(_id);
+  try {
+    let products = [];
+    const user = await User.findById(_id);
+    const alreadyExistCart = await Cart.findOne({ orderedBy: user._id });
+    if (alreadyExistCart) {
+      alreadyExistCart.remove();
+    }
+    for (let i = 0; i < cart.length; i++) {
+      let object = {};
+      object.product = cart[i]._id;
+      object.count = cart[i].count;
+      object.color = cart[i].color;
+      let getPrice = await product
+        .findById(cart[i]._id)
+        .select('price')
+        .exec();
+      object.price = getPrice.price;
+      products.push(object);
+    }
+    let cartTotal = 0;
+    for (let i = 0; i < products.length; i++) {
+      cartTotal = cartTotal + products[i].price * products[i].count;
+    }
+    console.log(products, cartTotal);
+    let newCart = await new Cart({
+      products,
+      cartTotal,
+      orderedBy: user?._id,
+    }).save();
+    res.json(newCart);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
 module.exports = {
   createUser,
   loginUserCtrl,
@@ -262,4 +366,8 @@ module.exports = {
   updatePassword,
   frogotPassword,
   resetPassword,
+  loginAdmin,
+  getWishList,
+  saveAddress,
+  userCart,
 };
